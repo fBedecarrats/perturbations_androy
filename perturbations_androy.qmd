@@ -1,0 +1,41 @@
+---
+title: "Perturbations dans la commune d'Androy"
+author: "Florent Bédécarrats, Stéphanie Carrière"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## On obtient les limites de la commune
+
+```{r}
+library(tidyverse)
+library(geodata)
+library(sf)
+library(mapme.biodiversity)
+library(tmap)
+
+communes_mada <- gadm("MDG", level=4, path = tempdir()) %>%
+  st_as_sf() 
+
+androy <- communes_mada %>%
+  filter(NAME_4 == "Androy")
+  
+tmap_mode("view")
+tm_shape(androy) +
+  tm_polygons()
+```
+
+
+## On acquiert les données
+
+```{r}
+aoi <- init_portfolio(androy, years = 2000:2021) %>%
+  get_resources(c("nasa_grace", "chirps"))
+
+
+
+```
+
+
