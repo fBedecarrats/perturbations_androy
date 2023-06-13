@@ -8,9 +8,11 @@ editor_options:
 bibliography: references.bib
 ---
 
+
 ## A focus on the Androy Municipality
 
 Located in Fianarantsoa Region. We obtain the municipal delimitation from the Global Adminisative Area database (GADM).
+
 
 ```{r admin_data}
 library(tidyverse)
@@ -37,11 +39,13 @@ tm_shape(androy) +
   tm_basemap("OpenStreetMap")
 ```
 
+
 The municipality parially overlaps with the Ranomafana national park.
 
 ## Rainfall
 
 We use the CHIRPS data from NASA to estimate 3 day average rainfall on the Androy Municipality. We compute the data using the package mapme.biodiversity [@mapme.biodiversity].
+
 
 ```{r rainfall}
 # Fetch data
@@ -61,18 +65,17 @@ rainfall_androy %>%
   geom_line()
 ```
 
+
 ## Cyclones
 
 We use the Tropical cyclone best track data (IBTrACS) to get history of cyclone trajectories and cyclone attributes [@knapp_international_2010], as well as raw code from [@mapme.protectedareas].
 
-```{r cyclones}
-if (!file.exists("ibtracs/IBTrACS.since1980.list.v04r00.lines.shp")) {
-  dir.create("ibtracs")
-  download.file(url = "https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r00/access/shapefile/IBTrACS.since1980.list.v04r00.lines.zip", 
-                destfile = "ibtracs/ibtracs_lines.zip")
-  unzip("ibtracs/ibtracs_lines.zip", exdir = "ibtracs")
-}
 
+```{r cyclones}
+dir.create("ibtracs")
+download.file(url = "https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r00/access/shapefile/IBTrACS.since1980.list.v04r00.lines.zip", 
+               destfile = "ibtracs/ibtracs_lines.zip")
+unzip("ibtracs/ibtracs_lines.zip", exdir = "ibtracs")
 # column description is given here: https://www.ncei.noaa.gov/sites/default/files/2021-07/IBTrACS_v04_column_documentation.pdf
 cyclones <- read_sf("ibtracs/IBTrACS.since1980.list.v04r00.lines.shp")
 
@@ -129,3 +132,4 @@ tm_shape(cyclones_mada) +
   tm_borders(col = "red")
 
 ```
+
