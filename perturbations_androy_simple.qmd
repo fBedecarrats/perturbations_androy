@@ -5,8 +5,10 @@ format:
   html: 
     toc: true
     output-file: index.html
+    embed-resources: true
+    standalone: true
 execute:
-  warnings: false
+  warning: false
   error: false
 editor: visual
 editor_options: 
@@ -20,6 +22,7 @@ Located in Fianarantsoa Region. We obtain the municipal delimitation from the Gl
 
 ```{r admin_data}
 #| fig-cap: "Androy municipality location (Source: GADM)"
+
 library(tidyverse)
 library(geodata)
 library(sf)
@@ -28,10 +31,17 @@ library(mapme.biodiversity)
 library(tmap)
 library(zoo)
 
-mada <- gadm("MDG", level=0, path = tempdir()) %>%
-  st_as_sf() 
-communes_mada <- gadm("MDG", level=4, path = tempdir()) %>%
-  st_as_sf() 
+if (file.exists("mada.RDS")) {
+  mada <- read_rds("mada.RDS")
+  communes_mada <- read_rds("communes_mada.RDS")
+} else {
+  mada <- gadm("MDG", level=0, path = tempdir()) %>%
+    st_as_sf() 
+  communes_mada <- gadm("MDG", level=4, path = tempdir()) %>%
+    st_as_sf() 
+  write_rds(mada, "mada.RDS")
+  write_rds(communes_mada, "communes_mada.RDS")
+}
 
 androy <- communes_mada %>%
   filter(NAME_4 == "Androy")
