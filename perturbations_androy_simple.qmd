@@ -30,6 +30,7 @@ library(terra)
 library(mapme.biodiversity)
 library(tmap)
 library(zoo)
+library(progressr)
 
 if (file.exists("mada.RDS")) {
   mada <- read_rds("mada.RDS")
@@ -64,11 +65,14 @@ We use the CHIRPS data from NASA to estimate 3 day average rainfall on the Andro
 aoi <- init_portfolio(androy, years = 1980:2021) %>%
   get_resources("chirps")
 
-aoi2 <- aoi %>%
-  calc_indicators("precipitation_chirps",
-                  engine = "exactextract",
-                  scales_spi = 3,
-                  spi_prev_years = 8)
+progressr::with_progress({
+  aoi2 <- aoi %>%
+    calc_indicators("precipitation_chirps",
+                    engine = "exactextract",
+                    scales_spi = 3,
+                    spi_prev_years = 8)
+})
+
 rainfall_androy <- aoi2[[16]][[1]]
 
 rainfall_androy %>%
