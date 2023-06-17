@@ -1,0 +1,137 @@
+---
+title: "PoC S3 with mapme.biodiversity"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Concept
+
+I have a MinIO S3 bucket named "fbedecarrats". On it, there is a folder "mapme_biodiversity" with a subfolder "chirps" that contains all blobal the resources used by mapme.biodiversity package for chirps. 
+
+```{r}
+library(tidyverse)
+library(aws.s3) # the package used to access the S3 API 
+
+get_bucket_df("fbedecarrats", prefix = "mapme_biodiversity", region = "") %>%
+  head(5) %>%
+  pluck("Key")
+
+# [1] "mapme_biodiversity/chirps/chirps-v2.0.1981.01.cog" "mapme_biodiversity/chirps/chirps-v2.0.1981.02.cog"
+# [3] "mapme_biodiversity/chirps/chirps-v2.0.1981.03.cog" "mapme_biodiversity/chirps/chirps-v2.0.1981.04.cog"
+# [5] "mapme_biodiversity/chirps/chirps-v2.0.1981.05.cog"
+```
+
+Using [the GDAL Virtual File System driver for S3](https://gdal.org/user/virtual_file_systems.html#vsis3-aws-s3-files), the access to files stores in S3 is straightforward: one just need to specify the location on the S3 bucket like if it was on the local filesystem and add "/vsis3/" at the beginning.
+**Nota bene:** the credentials to access the S3 storage must be set (it is automatic on my cloud environment, but otherwise it needs to be specified manually).
+
+```{r}
+library(terra)
+chirps1 <- rast("/vsis3/fbedecarrats/mapme_biodiversity/chirps/chirps-v2.0.1981.01.cog")
+print(chirps1)
+# class       : SpatRaster 
+# dimensions  : 2000, 7200, 1  (nrow, ncol, nlyr)
+# resolution  : 0.05, 0.05  (x, y)
+# extent      : -180, 180, -50, 50  (xmin, xmax, ymin, ymax)
+# coord. ref. : lon/lat WGS 84 (EPSG:4326) 
+# source      : chirps-v2.0.1981.01.cog 
+# name        : chirps-v2.0.1981.01 
+```
+
+And it works with mapme.biodiversity, recognizing 
+
+```{r}
+library(sf)
+library(mapme.biodiversity)
+neiba <- system.file("extdata", "sierra_de_neiba_478140_2.gpkg", 
+                     package = "mapme.biodiversity") %>%
+  sf::read_sf()
+
+pf <- init_portfolio(neiba, years = 2000:2020, 
+                     outdir = "/vsis3/fbedecarrats/mapme_biodiversity")
+str(pf)
+# sf [1 × 6] (S3: sf/tbl_df/tbl/data.frame)
+#  $ WDPAID   : num 478140
+#  $ NAME     : chr "Sierra de Neiba"
+#  $ DESIG_ENG: chr "National Park"
+#  $ ISO3     : chr "DOM"
+#  $ geom     :sfc_POLYGON of length 1; first list element: List of 4
+#   ..$ : num [1:1607, 1:2] -71.8 -71.8 -71.8 -71.8 -71.8 ...
+#   ..$ : num [1:5, 1:2] -71.4 -71.4 -71.4 -71.4 -71.4 ...
+#   ..$ : num [1:4, 1:2] -71.5 -71.5 -71.5 -71.5 18.6 ...
+#   ..$ : num [1:5, 1:2] -71.5 -71.5 -71.5 -71.5 -71.5 ...
+#   ..- attr(*, "class")= chr [1:3] "XY" "POLYGON" "sfg"
+#  $ assetid  : int 1
+#  - attr(*, "sf_column")= chr "geom"
+#  - attr(*, "agr")= Factor w/ 3 levels "constant","aggregate",..: NA NA NA NA NA
+#   ..- attr(*, "names")= chr [1:5] "WDPAID" "NAME" "DESIG_ENG" "ISO3" ...
+#  - attr(*, "nitems")= int 1
+#  - attr(*, "bbox")= 'bbox' Named num [1:4] -71.8 18.6 -71.3 18.7
+#   ..- attr(*, "names")= chr [1:4] "xmin" "ymin" "xmax" "ymax"
+#   ..- attr(*, "crs")=List of 2
+#   .. ..$ input: chr "WGS 84"
+#   .. ..$ wkt  : chr "GEOGCRS[\"WGS 84\",\n    DATUM[\"World Geodetic System 1984\",\n        ELLIPSOID[\"WGS 84\",6378137,298.257223"| __truncated__
+#   .. ..- attr(*, "class")= chr "crs"
+#  - attr(*, "resources")= list()
+#  - attr(*, "years")= int [1:21] 2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 ...
+#  - attr(*, "outdir")= chr "/vsis3/fbedecarrats/mapme_biodiversity"
+#  - attr(*, "tmpdir")= chr "/tmp/RtmpXASngm"
+#  - attr(*, "verbose")= logi TRUE
+#  - attr(*, "testing")= logi FALSE
+```
+
+However, although all the cog files are present in the chirps subfolder, the resource were not recongized. 
+
+```{r}
+pf <- pf %>%
+  get_resources("chirps")
+# Starting process to download resource 'chirps'........
+#   |                                                  | 0 % ~calculating  
+# <simpleWarning in download.file(missing_urls[i], missing_filenames[i], quiet = TRUE,     mode = ifelse(Sys.info()["sysname"] == "Windows", "wb", "w")): URL https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_monthly/cogs/chirps-v2.0.1981.01.cog: cannot open destfile '/vsis3/fbedecarrats/mapme_biodiversity/chirps/chirps-v2.0.1981.01.cog', reason 'No such file or directory'>
+# Warning message:
+# Download for resource chirps failed. Returning unmodified portfolio object.
+
+pf <- pf %>%
+   calc_indicators("precipitation_chirps",
+                    engine = "exactextract",
+                    scales_spi = 3,
+                    spi_prev_years = 8)
+# Error in .check_existing_resources(existing_resources, required_resources,  : 
+#   The following required resource is not available: chirps.
+```
+
+The resources don'get recognized because they are indexed with the local path, eg.: "/home/onyxia/work/perturbations_androy/chirps/chirps-v2.0.1981.01.cog". I'll try to modify and replace. 
+
+```{r}
+# Read existing
+tindex <- st_read("/vsis3/fbedecarrats/mapme_biodiversity/chirps/tileindex_chirps.gpkg")
+# Correct path
+tindex2 <- tindex %>%
+  mutate(location = str_replace(location, 
+                                "/home/onyxia/work/perturbations_androy/",
+                                "/vsis3/fbedecarrats/mapme_biodiversity/"))
+# write locally
+st_write(tindex2, "tileindex_chirps.gpkg")
+# replace object in S3
+put_object(file = "tileindex_chirps.gpkg",
+    object = "mapme_biodiversity/chirps/tileindex_chirps.gpkg",
+    bucket = "fbedecarrats",
+    region = "",
+    multipart = TRUE)
+```
+
+```{r}
+pf <- init_portfolio(neiba, years = 2000:2020, 
+                     outdir = "/vsis3/fbedecarrats/mapme_biodiversity")
+# Starting process to download resource 'chirps'........
+#   |                                                  | 0 % ~calculating  
+# <simpleWarning in download.file(missing_urls[i], missing_filenames[i], quiet = TRUE,     mode = ifelse(Sys.info()["sysname"] == "Windows", "wb", "w")): URL https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_monthly/cogs/chirps-v2.0.1981.01.cog: cannot open destfile '/vsis3/fbedecarrats/mapme_biodiversity/chirps/chirps-v2.0.1981.01.cog', reason 'No such file or directory'>
+# Warning message:
+# Download for resource chirps failed. Returning unmodified portfolio object. 
+pf <- pf %>%
+  get_resources("chirps")
+# Error in .check_existing_resources(existing_resources, required_resources,  : 
+#   The following required resource is not available: chirps.
+```
+
