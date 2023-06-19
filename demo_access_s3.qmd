@@ -8,7 +8,7 @@ editor_options:
 
 ## Concept
 
-I have a MinIO S3 bucket named "fbedecarrats". On it, there is a folder "mapme_biodiversity" with a subfolder "chirps" that contains all blobal the resources used by mapme.biodiversity package for chirps. 
+I have a MinIO S3 bucket named "fbedecarrats". On it, there is a folder "mapme_biodiversity" with a subfolder "chirps" that contains all blobal the resources used by mapme.biodiversity package for chirps.
 
 ```{r}
 library(tidyverse)
@@ -23,8 +23,7 @@ get_bucket_df("fbedecarrats", prefix = "mapme_biodiversity", region = "") %>%
 # [5] "mapme_biodiversity/chirps/chirps-v2.0.1981.05.cog"
 ```
 
-Using [the GDAL Virtual File System driver for S3](https://gdal.org/user/virtual_file_systems.html#vsis3-aws-s3-files), the access to files stores in S3 is straightforward: one just need to specify the location on the S3 bucket like if it was on the local filesystem and add "/vsis3/" at the beginning.
-**Nota bene:** the credentials to access the S3 storage must be set (it is automatic on my cloud environment, but otherwise it needs to be specified manually).
+Using [the GDAL Virtual File System driver for S3](https://gdal.org/user/virtual_file_systems.html#vsis3-aws-s3-files), the access to files stores in S3 is straightforward: one just need to specify the location on the S3 bucket like if it was on the local filesystem and add "/vsis3/" at the beginning. **Nota bene:** the credentials to access the S3 storage must be set (it is automatic on my cloud environment, but otherwise it needs to be specified manually).
 
 ```{r}
 library(terra)
@@ -39,7 +38,7 @@ print(chirps1)
 # name        : chirps-v2.0.1981.01 
 ```
 
-And it works with mapme.biodiversity, recognizing 
+And it works with mapme.biodiversity, recognizing
 
 ```{r}
 library(sf)
@@ -81,7 +80,7 @@ str(pf)
 #  - attr(*, "testing")= logi FALSE
 ```
 
-However, although all the cog files are present in the chirps subfolder, the resource were not recongized. 
+However, although all the cog files are present in the chirps subfolder, the resource were not recongized.
 
 ```{r}
 pf <- pf %>%
@@ -101,7 +100,7 @@ pf <- pf %>%
 #   The following required resource is not available: chirps.
 ```
 
-The resources don'get recognized because they are indexed with the local path, eg.: "/home/onyxia/work/perturbations_androy/chirps/chirps-v2.0.1981.01.cog". I'll try to modify and replace. 
+The resources don'get recognized because they are indexed with the local path, eg.: "/home/onyxia/work/perturbations_androy/chirps/chirps-v2.0.1981.01.cog". I'll try to modify and replace.
 
 ```{r}
 # Read existing
@@ -121,6 +120,8 @@ put_object(file = "tileindex_chirps.gpkg",
     multipart = TRUE)
 ```
 
+After correcting the indexes in the tileindex, the presence of the resources is still not identified.
+
 ```{r}
 pf <- init_portfolio(neiba, years = 2000:2020, 
                      outdir = "/vsis3/fbedecarrats/mapme_biodiversity")
@@ -135,3 +136,4 @@ pf <- pf %>%
 #   The following required resource is not available: chirps.
 ```
 
+I don't understand why the package does not identify that the resource is already present, as it would do on the local filesystem.
